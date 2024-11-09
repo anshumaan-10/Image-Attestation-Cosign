@@ -19,7 +19,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Install cosign
       uses: sigstore/cosign-installer@v3.2.0
@@ -75,9 +75,13 @@ jobs:
       run: |
         kubectl apply -f ./k3s/policy-check-image-keyless.yaml
 
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
     - name: Deploy pod to k3s
       if: always()
       run: |
+        ls -larth ./k3s
         kubectl create ns app
         kubectl apply -f ./k3s/pod.yaml
         kubectl -n app wait --for=condition=Ready pod/cg
