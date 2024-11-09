@@ -83,6 +83,6 @@ jobs:
       run: |
         ls -larth ./k3s
         kubectl create ns app
-        kubectl apply -f ./k3s/pod.yaml
+        kubectl apply -f ./k3s/pod.yml
         kubectl -n app wait --for=condition=Ready pod/cg
         kubectl get pods -n app
