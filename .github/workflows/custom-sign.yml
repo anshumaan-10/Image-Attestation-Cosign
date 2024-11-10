@@ -14,7 +14,7 @@ jobs:
 
     name: Build and sign image
     env:
-      IMAGE_NAME: ghcr.io/anshumaan-10/my-app  # Replace with your desired image name
+      IMAGE_NAME: ghcr.io/anshumaan-10/image-attestation-cosign  # Replace with your desired image name
       IMAGE_TAG: latest
 
     steps:
@@ -41,7 +41,7 @@ jobs:
       uses: docker/build-push-action@v5
       id: build-and-push
       with:
-        file: ./docker-image/Dockerfile
+        file: Dockerfile
         platforms: linux/amd64,linux/arm/v7,linux/arm64
         push: true
         provenance: false
