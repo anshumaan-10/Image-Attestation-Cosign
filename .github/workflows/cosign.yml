@@ -10,7 +10,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  build-and-sign:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -24,14 +24,14 @@ jobs:
     - name: Install cosign
       uses: sigstore/cosign-installer@v3.2.0
 
-    - name: Check install!
+    - name: Verify Cosign installation
       run: cosign version
 
     - name: Setup Docker buildx
       uses: docker/setup-buildx-action@v2
 
-    - name: Log into ghcr.io
-      uses: docker/login-action@master
+    - name: Log into GitHub Container Registry
+      uses: docker/login-action@v2
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
@@ -39,12 +39,13 @@ jobs:
 
     - name: Build and push container image
       id: push-step
-      uses: docker/build-push-action@master
+      uses: docker/build-push-action@v3
       with:
+        context: .
         push: true
         tags: ghcr.io/${{ github.repository }}:latest
 
-    - name: Sign the images with GitHub OIDC Token
+    - name: Sign the image
       env:
         DIGEST: ${{ steps.push-step.outputs.digest }}
         TAGS: ghcr.io/${{ github.repository }}
@@ -52,38 +53,37 @@ jobs:
       run: |
         cosign sign --yes "${TAGS}@${DIGEST}"
 
-    - name: (optional) Verify the images
+    - name: Verify the image
+      env:
+        TAGS: ghcr.io/${{ github.repository }}:latest
       run: |
-        cosign verify ghcr.io/${{ github.repository }}:latest \
-           --certificate-identity https://github.com/${{ github.repository }}@refs/heads/main \
-           --certificate-oidc-issuer https://token.actions.githubusercontent.com | jq
+        cosign verify "${TAGS}" \
+          --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/cosign.yml@refs/heads/main" \
+          --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
+  deploy-to-k3s:
+    needs: build-and-sign
+    runs-on: ubuntu-latest
+    steps:
     - name: Create k3s cluster
       uses: debianmaster/actions-k3s@master
-      id: k3s
       with:
         version: 'latest'
-          
-    - name: Install Kyverno chart
+      
+    - name: Install Kyverno with Helm
       run: |
         helm repo add kyverno https://kyverno.github.io/kyverno/
         helm repo update
-        helm install --atomic kyverno kyverno/kyverno -n kyverno --create-namespace
+        helm install kyverno kyverno/kyverno -n kyverno --create-namespace
         sleep 10
 
-    - name: Apply image attestation policy
+    - name: Apply Kyverno image attestation policy
       run: |
         kubectl apply -f ./k3s/policy-check-image-keyless.yaml
 
-    - name: Checkout repository
-      uses: actions/checkout@v3
-
     - name: Deploy pod to k3s
-      if: always()
       run: |
-        ls -larth ./k3s
         kubectl create ns app
         kubectl apply -f ./k3s/pod.yml
         sleep 20
-        #kubectl -n app wait --for=condition=Ready pod/cg --timeout=120s
         kubectl get pods -n app
