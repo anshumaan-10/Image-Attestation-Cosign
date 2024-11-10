@@ -5,6 +5,6 @@ metadata:
   namespace: app
 spec:
   containers:
-    - name: cg-test-keyless-sign
-      image: ghcr.io/anshumaan-10/image-attestation-cosign@<IMAGE_DIGEST>
+    - image: ghcr.io/anshumaan-10/image-attestation-cosign@sha256:136a2dd9e5b9b5e550ae70b9a3587bc20b3464d2ce41fe8575222ea80919465d
+      name: cg-test-keyless-sign
       resources: {}
