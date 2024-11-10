@@ -20,7 +20,8 @@ spec:
         attestors:
           - entries:
               - keyless:
-                  subject: "https://github.com/anshumaan-10/image-attestation-cosign/.github/workflows/cosign.yml@refs/heads/main"
+                  #subject: "https://github.com/anshumaan-10/image-attestation-cosign/.github/workflows/cosign.yml@refs/heads/main"
+                  subject: "https://github.com/anshumaan-10/image-attestation-cosign/.github/workflows/custom-sign.yml@refs/heads/main"
                   issuer: "https://token.actions.githubusercontent.com"
                   rekor:
                     url: "https://rekor.sigstore.dev"
