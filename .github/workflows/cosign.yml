@@ -87,7 +87,7 @@ jobs:
         run: |
           set -x
           kubectl create ns app
-          kubectl apply -f ./k3s/pod.yaml
+          kubectl apply -f ./k3s/pod.yml
           kubectl get pod -n app
           kubectl describe pod cg -n app
           #kubectl -n app wait --for=condition=Ready --timeout=120s pod/cg
