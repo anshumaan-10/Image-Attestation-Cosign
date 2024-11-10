@@ -58,7 +58,7 @@ jobs:
       - name: (optional) Verify the images
         run: |
           cosign verify ghcr.io/whoissqr/cg-test-keyless-sign \
-             --certificate-identity https://github.com/whoissqr/cg-test-keyless-sign/.github/workflows/main.yml@refs/heads/main \
+             --certificate-identity https://github.com/anshumaan-10/image-attestation-cosign/.github/workflows/cosign.yml@refs/heads/main \
              --certificate-oidc-issuer https://token.actions.githubusercontent.com | jq
 
       - name: Create k3s cluster
@@ -82,8 +82,9 @@ jobs:
         if: always() 
         run: |
           kubectl create ns app
-          kubectl apply -f ./k3s/pod.yaml
-          kubectl -n app wait --for=condition=Ready pod/cg
+          kubectl apply -f ./k3s/pod.yml
+          sleep 20
+          #kubectl -n app wait --for=condition=Ready pod/cg
           kubectl get pods -n app
 
       - name: (optional) Install Kyverno CLI
@@ -97,4 +98,4 @@ jobs:
         run: |
           kyverno version
           # kyverno apply ./k3s/policy-check-image-keyless.yaml --cluster -v 10
-          kubectl get clusterpolicies -o yaml | kyverno apply - --resource ./k3s/pod.yaml
+          kubectl get clusterpolicies -o yaml | kyverno apply - --resource ./k3s/pod.yml
