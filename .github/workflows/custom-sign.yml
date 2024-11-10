@@ -54,6 +54,19 @@ jobs:
           cosign-private-key: ${{ secrets.COSIGN_PRIVATE_KEY }}
           cosign-password: ${{ secrets.COSIGN_PASSWORD }}
 
+
+      - name: Save the hardcoded public key to file
+        run: |
+          echo "-----BEGIN PUBLIC KEY-----
+          MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEinol7oz4Bsk45aCtMyGjX6iVoch5
+          4N66CfJq2sPicjamJJ9Trat8qAgBaeUZ9lUpGweiNnwgMFw6L3nN63ZlXQ==
+          -----END PUBLIC KEY-----" > cosign-public-key.pem
+
+      - name: Verify the signature of the image
+        run: |
+          echo "Verifying the signature of the image..."
+          cosign verify --key cosign-public-key.pem ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
       - name: Create k3s cluster
         uses: debianmaster/actions-k3s@master
         id: k3s
