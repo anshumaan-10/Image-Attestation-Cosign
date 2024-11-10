@@ -53,7 +53,7 @@ jobs:
           COSIGN_EXPERIMENTAL: "true"
         run: |
           echo "signing the image..."
-          cosign sign --yes "${TAGS}@${DIGEST}"
+          #cosign sign --yes "${TAGS}@${DIGEST}"
         
       - name: (optional) Verify the images
         run: |
