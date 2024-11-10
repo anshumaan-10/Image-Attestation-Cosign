@@ -1,0 +1,60 @@
+name: Image Verification and Kyverno Policy Enforcement
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_name:
+        description: 'Image name with digest (e.g., ghcr.io/anshumaan-10/image-attestation-cosign@sha256:<digest>)'
+        required: true
+        default: 'ghcr.io/anshumaan-10/image-attestation-cosign:latest'
+
+jobs:
+  verify-image-signature:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Cosign
+        uses: sigstore/cosign-installer@v3.5.0
+
+      - name: Verify the signature of the image
+        run: |
+          echo "Verifying the signature of the image..."
+          cosign verify --key cosign-public-key.pem ${{ github.event.inputs.image_name }}
+
+      - name: Create k3s cluster
+        uses: debianmaster/actions-k3s@master
+        id: k3s
+        with:
+          version: 'latest'
+
+      - name: Install Kyverno chart
+        run: |
+          helm repo add kyverno https://kyverno.github.io/kyverno/
+          helm repo update
+          helm install --atomic kyverno kyverno/kyverno -n kyverno --create-namespace
+          sleep 10
+
+      - name: Apply image attestation policy
+        run: |
+          kubectl apply -f ./k3s/policy-check-image-keyless.yaml
+
+      - name: Deploy pod to k3s
+        run: |
+          kubectl create ns app
+          kubectl apply -f ./k3s/pod.yml
+          sleep 20
+          kubectl get pods -n app
+
+      - name: (optional) Install Kyverno CLI
+        uses: kyverno/action-install-cli@v0.2.0
+        with:
+          release: 'v1.9.5'
+
+      - name: (optional) Dry run policy using Kyverno CLI
+        run: |
+          kyverno version
+          kyverno apply ./k3s/policy-check-image-keyless.yaml --cluster -v 10
+          kubectl get clusterpolicies -o yaml | kyverno apply - --resource ./k3s/pod.yml
