@@ -1,4 +1,4 @@
-name: Build and sign image
+name: Build, sign, and verify image
 on:
   push:
     branches:
@@ -12,7 +12,7 @@ jobs:
       contents: read
       packages: write
 
-    name: Build and sign image
+    name: Build, sign, and verify image
     env:
       IMAGE_NAME: ghcr.io/anshumaan-10/image-attestation-cosign  # Replace with your desired image name
       IMAGE_TAG: latest
@@ -55,47 +55,14 @@ jobs:
         cosign-private-key: ${{ secrets.COSIGN_PRIVATE_KEY }}
         cosign-password: ${{ secrets.COSIGN_PASSWORD }}
 
+    - name: Verify the signature of the image
+      run: |
+        echo "Verifying the signature of the image..."
+        cosign verify --key ${{ secrets.COSIGN_PUBLIC_KEY }} ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
     - name: Output image tags
       env:
         TAGS: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
       run: |
         echo "## Built images with the following tags" >>$GITHUB_STEP_SUMMARY
         echo "${TAGS}" >>$GITHUB_STEP_SUMMARY
-
-
-      # - name: Create k3s cluster
-      #   uses: debianmaster/actions-k3s@master
-      #   id: k3s
-      #   with:
-      #     version: 'latest'
-
-      # - name: Install Kyverno chart
-      #   run: |
-      #     helm repo add kyverno https://kyverno.github.io/kyverno/
-      #     helm repo update
-      #     helm install --atomic kyverno kyverno/kyverno -n kyverno --create-namespace
-      #     sleep 10
-
-      # - name: Apply image attestation policy
-      #   run: |
-      #     kubectl apply -f ./k3s/policy-check-image-keyless.yaml
-
-      # - name: Deploy pod to k3s
-      #   if: always()
-      #   run: |
-      #     kubectl create ns app
-      #     kubectl apply -f ./k3s/pod.yml
-      #     sleep 20
-      #     kubectl get pods -n app
-
-      # - name: (optional) Install Kyverno CLI
-      #   if: always()
-      #   uses: kyverno/action-install-cli@v0.2.0
-      #   with:
-      #     release: 'v1.9.5'
-
-      # - name: (optional) Dry run policy using Kyverno CLI
-      #   if: always()
-      #   run: |
-      #     kyverno version
-      #     kubectl get clusterpolicies -o yaml | kyverno apply - --resource ./k3s/pod.yml
