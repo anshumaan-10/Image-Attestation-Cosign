@@ -57,7 +57,7 @@ jobs:
         
       - name: (optional) Verify the images
         run: |
-          cosign verify ghcr.io/whoissqr/cg-test-keyless-sign \
+          cosign verify ghcr.io/anshumaan-10/* \
              --certificate-identity https://github.com/anshumaan-10/image-attestation-cosign/.github/workflows/cosign.yml@refs/heads/main \
              --certificate-oidc-issuer https://token.actions.githubusercontent.com | jq
 
