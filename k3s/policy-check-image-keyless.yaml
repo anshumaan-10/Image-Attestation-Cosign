@@ -8,20 +8,19 @@ spec:
   background: false
   webhookTimeoutSeconds: 30
   rules:
-    - name: check-image-keyless
+    - name: check-image-signature
       match:
         any:
         - resources:
             kinds:
               - Pod
       verifyImages:
-      - verifyDigest: false
-        imageReferences:
-        - "ghcr.io/whoissqr/cg-test-keyless-sign*"
+      - image: "ghcr.io/anshumaan-10/*"
+        verifyDigest: false
         attestors:
-        - entries:
-          - keyless:
-              subject: "https://github.com/anshumaan-10/image-attestation-cosign/.github/workflows/cosign.yml@refs/heads/main"
-              issuer: "https://token.actions.githubusercontent.com"
-              rekor:
-                url: https://rekor.sigstore.dev
+          - entries:
+              - keyless:
+                  subject: "https://github.com/anshumaan-10/image-attestation-cosign/.github/workflows/cosign.yml@refs/heads/main"
+                  issuer: "https://token.actions.githubusercontent.com"
+                  rekor:
+                    url: "https://rekor.sigstore.dev"
