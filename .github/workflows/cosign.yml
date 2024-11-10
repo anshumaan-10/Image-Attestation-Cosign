@@ -1,14 +1,15 @@
 name: Publish and Sign Container Image
 
 on:
-  schedule:
-    - cron: '32 11 * * *'
-  push:
-    branches: [ main ]
-    # Publish semver tags as releases.
-    tags: [ 'v*.*.*' ]
-  pull_request:
-    branches: [ main ]
+  # schedule:
+  #   - cron: '32 11 * * *'
+  # push:
+  #   branches: [ main ]
+  #   # Publish semver tags as releases.
+  #   tags: [ 'v*.*.*' ]
+  # pull_request:
+  #   branches: [ main ]
+  workflow_dispatch: 
 
 jobs:
   build:
