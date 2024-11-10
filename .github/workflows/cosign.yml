@@ -52,8 +52,8 @@ jobs:
           TAGS: ghcr.io/${{ github.repository }}
           COSIGN_EXPERIMENTAL: "true"
         run: |
-          echo "dont sign image"
-          # cosign sign --yes "${TAGS}@${DIGEST}"
+          echo "signing the image..."
+          cosign sign --yes "${TAGS}@${DIGEST}"
         
       - name: (optional) Verify the images
         run: |
