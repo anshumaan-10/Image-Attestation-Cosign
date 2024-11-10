@@ -1,15 +1,10 @@
-name: Publish, Sign, and Validate Container Image
+name: Publish and Sign Container Image
 
-on:
-  schedule:
-    - cron: '32 11 * * *'
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+on: workflow_dispatch
 
 jobs:
-  publish-sign-validate:
+  build:
+
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -17,64 +12,88 @@ jobs:
       id-token: write
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-    - name: Install cosign
-      uses: sigstore/cosign-installer@v3.2.0
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.7.0
+          
+      - name: Check install!
+        run: cosign version
+        
+      - name: Log into ghcr.io
+        uses: docker/login-action@master
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Setup Docker buildx
-      uses: docker/setup-buildx-action@v2
+      - uses: distroless/actions/apko-build@main
+        with:
+           config: foo.yaml
+           tag: ghcr.io/${{ github.repository }}:latest
 
-    - name: Log into GitHub Container Registry
-      uses: docker/login-action@v2
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: distroless/actions/apko-publish@main
+        id: push-step
+        with:
+          config: foo.yaml
+          tag: ghcr.io/${{ github.repository }}:latest
 
-    - name: Build and push container image
-      id: push-step
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        file: ./Dockerfile
-        push: true
-        tags: ghcr.io/${{ github.repository }}:latest
+      - name: Sign the images with GitHub OIDC Token
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        run: |
+          echo "sign image"
+          cosign sign --yes  ${{ steps.push-step.outputs.digest }}
+        
+      - name: (optional) Verify the images
+        run: |
+          cosign verify ghcr.io/whoissqr/cg-test-keyless-sign \
+             --certificate-identity https://github.com/whoissqr/cg-test-keyless-sign/.github/workflows/main.yml@refs/heads/main \
+             --certificate-oidc-issuer https://token.actions.githubusercontent.com | jq
 
-    - name: Sign the container image with cosign
-      env:
-        DIGEST: ${{ steps.push-step.outputs.digest }}
-        COSIGN_EXPERIMENTAL: "true"
-      run: |
-        cosign sign --yes ghcr.io/${{ github.repository }}@${DIGEST} \
-          --certificate-identity https://github.com/${{ github.repository }}@refs/heads/main \
-          --certificate-oidc-issuer https://token.actions.githubusercontent.com
+      - name: (optional) Install Kyverno CLI
+        if: always() 
+        uses: kyverno/action-install-cli@v0.2.0
+        with:
+          release: 'v1.12.6'
+          
+      - name: (optional) Dry run policy using Kyverno CLI
+        if: always() 
+        run: |
+          kyverno version
+          kyverno apply ./k3s/policy-check-image-keyless.yaml --resource ./k3s/pod.yaml
+          # kubectl get clusterpolicies -o yaml | kyverno apply - --resource ./k3s/pod.yaml -v 10
+          
+      - name: Create k3s cluster
+        uses: debianmaster/actions-k3s@master
+        id: k3s
+        with:
+          version: 'latest'
+          
+      - name: Install Kyverno chart
+        run: |
+          helm repo add kyverno https://kyverno.github.io/kyverno/
+          helm repo update
+          helm install --atomic kyverno kyverno/kyverno -n kyverno --create-namespace
+          sleep 10
 
-    - name: Verify the signed image
-      run: |
-        cosign verify ghcr.io/${{ github.repository }}:latest \
-          --certificate-identity https://github.com/${{ github.repository }}@refs/heads/main \
-          --certificate-oidc-issuer https://token.actions.githubusercontent.com
+      - name: Apply image attestation policy
+        run: |
+          kubectl apply -f ./k3s/policy-check-image-keyless.yaml
 
-    - name: Create k3s cluster
-      uses: debianmaster/actions-k3s@master
-      with:
-        version: 'latest'
+      - name: Deploy pod to k3s
+        if: always() 
+        run: |
+          set -x
+          kubectl create ns app
+          kubectl apply -f ./k3s/pod.yaml
+          kubectl get pod -n app
+          kubectl describe pod cg -n app
+          #kubectl -n app wait --for=condition=Ready --timeout=120s pod/cg
+          sleep 10
+          kubectl describe pod cg -n app
+          kubectl get pods -n app
 
-    - name: Install Kyverno chart
-      run: |
-        helm repo add kyverno https://kyverno.github.io/kyverno/
-        helm repo update
-        helm install kyverno kyverno/kyverno -n kyverno --create-namespace
-        sleep 10
 
-    - name: Apply Kyverno policy
-      run: kubectl apply -f ./k3s/policy-check-image-keyless.yaml
-
-    - name: Deploy pod to k3s
-      run: |
-        kubectl create namespace app
-        kubectl apply -f ./k3s/pod.yml
-        sleep 25
-        kubectl get pods -n app
+          
