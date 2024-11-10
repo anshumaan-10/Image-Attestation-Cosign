@@ -19,6 +19,14 @@ jobs:
       - name: Set up Cosign
         uses: sigstore/cosign-installer@v3.5.0
 
+
+      - name: Save the hardcoded public key to file
+        run: |
+          echo "-----BEGIN PUBLIC KEY-----
+          MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEinol7oz4Bsk45aCtMyGjX6iVoch5
+          4N66CfJq2sPicjamJJ9Trat8qAgBaeUZ9lUpGweiNnwgMFw6L3nN63ZlXQ==
+          -----END PUBLIC KEY-----" > cosign-public-key.pem
+
       - name: Verify the signature of the image
         run: |
           echo "Verifying the signature of the image..."
